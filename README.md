@@ -140,6 +140,36 @@ src/CpuCollision.c src/DataGenerator.c src/Benchmark.c \
 !./collision_benchmark
 ```
 
+## Live CUDA-OpenGL Visualization
+
+The benchmark executable writes performance data to CSV. For live visualization on a Windows machine with an NVIDIA GPU, this repository also includes an experimental CUDA-OpenGL interop target:
+
+```text
+visualization/cuda-opengl
+```
+
+This visualizer is different from a browser simulation. CUDA owns the particle state, computes collisions every frame, maps an OpenGL VBO, and writes particle positions/colors directly into that VBO. OpenGL only draws the CUDA-written buffer.
+
+Build it on Windows with CUDA Toolkit, Visual Studio, GLFW, and GLEW:
+
+```powershell
+cd visualization/cuda-opengl
+mkdir build
+cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build . --config Release
+.\Release\cuda_collision_visualizer.exe 2500
+```
+
+Controls:
+
+- `Space`: pause/resume
+- `C`: switch uniform/clustered distribution
+- `R`: reset
+- `Esc`: quit
+
+The first visualizer version shows live CUDA brute force collision detection. The design can be extended with a CUDA uniform-grid visualization path, grid-cell overlays, and sampled candidate-pair lines.
+
 ## CSV Columns
 
 `results/timings.csv` contains:
