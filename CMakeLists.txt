@@ -13,6 +13,7 @@ add_executable(collision_benchmark
     src/CpuCollision.c
     src/CudaBruteForce.cu
     src/CudaGrid.cu
+    src/OpenAccCollision.c
     src/Benchmark.c
 )
 
@@ -29,4 +30,12 @@ target_compile_options(collision_benchmark PRIVATE
 
 if(UNIX)
     target_link_libraries(collision_benchmark PRIVATE m)
+endif()
+
+find_package(OpenACC)
+if(OpenACC_C_FOUND)
+    target_compile_options(collision_benchmark PRIVATE ${OpenACC_C_OPTIONS})
+    target_link_libraries(collision_benchmark PRIVATE OpenACC::OpenACC_C)
+else()
+    message(WARNING "OpenACC not found. The OpenACC benchmarks will run sequentially as standard C code.")
 endif()

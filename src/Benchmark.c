@@ -2,6 +2,7 @@
 #include "CpuCollision.h"
 #include "CudaBruteForce.cuh"
 #include "CudaGrid.cuh"
+#include "OpenAccCollision.h"
 #include "DataGenerator.h"
 
 #include <errno.h>
@@ -84,6 +85,18 @@ static int run_distribution(
     row.speedup_vs_cpu = 1.0;
     write_csv_result(csv, &row);
     printf("  CPU brute force: collisions=%llu time=%.3f ms\n", cpu.collision_count, cpu.execution_time_ms);
+
+    OpenAccCollisionResult openacc = run_openacc_brute_force(circles, object_count);
+    memset(&row, 0, sizeof(row));
+    row.object_count = object_count;
+    row.distribution_type = distribution_name;
+    row.method_name = "openacc_brute_force";
+    row.collision_count = openacc.collision_count;
+    row.candidate_pair_count = openacc.candidate_pair_count;
+    row.execution_time_ms = openacc.execution_time_ms;
+    row.speedup_vs_cpu = speedup_from_cpu(cpu.execution_time_ms, openacc.execution_time_ms);
+    write_csv_result(csv, &row);
+    printf("  OpenACC brute force: collisions=%llu time=%.3f ms speedup=%.2fx\n", openacc.collision_count, openacc.execution_time_ms, row.speedup_vs_cpu);
 
     CudaCollisionResult cuda_brute = run_cuda_brute_force(circles, object_count);
     memset(&row, 0, sizeof(row));
