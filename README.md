@@ -140,6 +140,18 @@ src/CpuCollision.c src/DataGenerator.c src/Benchmark.c \
 !./collision_benchmark
 ```
 
+## Live Raylib CUDA Visualization
+
+The core benchmark writes CSV results. A separate live visualizer is available under:
+
+```text
+visualization/raylib-cuda-interop
+```
+
+This target uses raylib for the window and UI overlay, while CUDA maps an OpenGL VBO and writes particle positions/colors directly into it through CUDA-OpenGL interop. It is intended for a Windows machine with an NVIDIA GPU.
+
+See [visualization/raylib-cuda-interop/README.md](visualization/raylib-cuda-interop/README.md) for build instructions.
+
 ## CSV Columns
 
 `results/timings.csv` contains:
