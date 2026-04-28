@@ -7,6 +7,12 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+    set(CMP674_CUDA_ARCHITECTURES native CACHE STRING "CUDA architectures for CMP674 targets")
+else()
+    set(CMP674_CUDA_ARCHITECTURES "60;61;70;75;80;86;89" CACHE STRING "CUDA architectures for CMP674 targets")
+endif()
+
 add_executable(collision_benchmark
     src/main.cu
     src/DataGenerator.c
@@ -20,7 +26,7 @@ target_include_directories(collision_benchmark PRIVATE include)
 
 set_target_properties(collision_benchmark PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
-    CUDA_ARCHITECTURES "60;70;75;80;86;89"
+    CUDA_ARCHITECTURES "${CMP674_CUDA_ARCHITECTURES}"
 )
 
 target_compile_options(collision_benchmark PRIVATE
