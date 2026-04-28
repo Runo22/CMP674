@@ -1,0 +1,15 @@
+build/
+build-*/
+visualization/raylib-cuda-interop/build/
+visualization/raylib-cuda-interop/build-*/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.dir/
+*.pdb
+*.ilk
+*.obj
+*.lib
+*.exp
+*.exe

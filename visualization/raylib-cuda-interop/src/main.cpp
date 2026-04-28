@@ -13,47 +13,55 @@ static const int kWindowHeight = 720;
 static const char* kVertexShader =
     "#version 330 core\n"
     "layout(location = 0) in vec2 aPos;\n"
-    "layout(location = 1) in vec3 aColor;\n"
-    "layout(location = 2) in float aSize;\n"
+    "layout(location = 1) in vec2 aLocal;\n"
+    "layout(location = 2) in vec3 aColor;\n"
     "out vec3 vColor;\n"
+    "out vec2 vLocal;\n"
     "void main() {\n"
     "    gl_Position = vec4(aPos, 0.0, 1.0);\n"
-    "    gl_PointSize = aSize;\n"
     "    vColor = aColor;\n"
+    "    vLocal = aLocal;\n"
     "}\n";
 
 static const char* kFragmentShader =
     "#version 330 core\n"
     "in vec3 vColor;\n"
+    "in vec2 vLocal;\n"
     "out vec4 FragColor;\n"
     "void main() {\n"
-    "    vec2 p = gl_PointCoord * 2.0 - 1.0;\n"
-    "    float d = dot(p, p);\n"
+    "    float d = dot(vLocal, vLocal);\n"
     "    if (d > 1.0) discard;\n"
-    "    float shade = 1.0 - d * 0.35;\n"
-    "    FragColor = vec4(vColor * shade, 1.0);\n"
+    "    float core = smoothstep(1.0, 0.0, d);\n"
+    "    vec3 color = mix(vColor * 0.55, vColor, core);\n"
+    "    FragColor = vec4(color, 1.0);\n"
     "}\n";
 
-static void configure_vertex_layout(unsigned int vao, unsigned int vbo) {
-    rlEnableVertexArray(vao);
-    rlEnableVertexBuffer(vbo);
+static void create_particle_buffers(unsigned int* vao, unsigned int* vbo, int object_count) {
+    *vao = rlLoadVertexArray();
+    rlEnableVertexArray(*vao);
+
+    *vbo = rlLoadVertexBuffer(NULL, object_count * 6 * (int)sizeof(RenderVertex), true);
+    rlEnableVertexBuffer(*vbo);
+
     rlSetVertexAttribute(0, 2, RL_FLOAT, false, sizeof(RenderVertex), 0);
     rlEnableVertexAttribute(0);
-    rlSetVertexAttribute(1, 3, RL_FLOAT, false, sizeof(RenderVertex), 2 * sizeof(float));
+    rlSetVertexAttribute(1, 2, RL_FLOAT, false, sizeof(RenderVertex), 2 * sizeof(float));
     rlEnableVertexAttribute(1);
-    rlSetVertexAttribute(2, 1, RL_FLOAT, false, sizeof(RenderVertex), 5 * sizeof(float));
+    rlSetVertexAttribute(2, 3, RL_FLOAT, false, sizeof(RenderVertex), 4 * sizeof(float));
     rlEnableVertexAttribute(2);
+
     rlDisableVertexBuffer();
     rlDisableVertexArray();
 }
 
-static void draw_particles(unsigned int vao, Shader shader, int object_count) {
+static void draw_particles(unsigned int vao, unsigned int shader_program, int object_count) {
     rlDrawRenderBatchActive();
-    BeginShaderMode(shader);
-    rlEnableVertexArray(vao);
-    glDrawArrays(GL_POINTS, 0, object_count);
-    rlDisableVertexArray();
-    EndShaderMode();
+    rlEnableShader(shader_program);
+    if (rlEnableVertexArray(vao)) {
+        rlDrawVertexArray(0, object_count * 6);
+        rlDisableVertexArray();
+    }
+    rlDisableShader();
 }
 
 int main(int argc, char** argv) {
@@ -68,12 +76,15 @@ int main(int argc, char** argv) {
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
     InitWindow(kWindowWidth, kWindowHeight, "Raylib + CUDA OpenGL Interop Collision Visualizer");
     SetTargetFPS(60);
-    glEnable(GL_PROGRAM_POINT_SIZE);
+    unsigned int particle_shader = rlLoadShaderProgram(kVertexShader, kFragmentShader);
+    if (particle_shader == 0) {
+        std::fprintf(stderr, "Failed to create particle shader.\n");
+        return 1;
+    }
 
-    Shader particle_shader = LoadShaderFromMemory(kVertexShader, kFragmentShader);
-    unsigned int vao = rlLoadVertexArray();
-    unsigned int vbo = rlLoadVertexBuffer(NULL, object_count * (int)sizeof(RenderVertex), true);
-    configure_vertex_layout(vao, vbo);
+    unsigned int vao = 0;
+    unsigned int vbo = 0;
+    create_particle_buffers(&vao, &vbo, object_count);
 
     if (!cuda_visualizer_create(vbo, object_count, kWindowWidth, kWindowHeight)) {
         std::fprintf(stderr, "Failed to create CUDA visualizer.\n");
@@ -96,16 +107,15 @@ int main(int argc, char** argv) {
         if (IsKeyPressed(KEY_R)) {
             cuda_visualizer_reset(clustered);
         }
-
         if (!paused) {
             cuda_visualizer_step(GetFrameTime(), &metrics);
         }
 
         BeginDrawing();
-        ClearBackground((Color){8, 10, 14, 255});
+        ClearBackground(Color{8, 10, 14, 255});
         draw_particles(vao, particle_shader, object_count);
 
-        DrawRectangle(12, 12, 460, 148, (Color){18, 22, 30, 220});
+        DrawRectangle(12, 12, 460, 148, Color{18, 22, 30, 220});
         DrawText("Raylib + CUDA-OpenGL Interop", 24, 24, 20, RAYWHITE);
         DrawText(TextFormat("Objects: %d", object_count), 24, 52, 18, LIGHTGRAY);
         DrawText(TextFormat("Distribution: %s  [C]", clustered ? "clustered" : "uniform"), 24, 76, 18, LIGHTGRAY);
@@ -119,7 +129,7 @@ int main(int argc, char** argv) {
     cuda_visualizer_destroy();
     rlUnloadVertexBuffer(vbo);
     rlUnloadVertexArray(vao);
-    UnloadShader(particle_shader);
+    rlUnloadShaderProgram(particle_shader);
     CloseWindow();
     return 0;
 }

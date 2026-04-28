@@ -7,10 +7,11 @@ extern "C" {
 typedef struct RenderVertex {
     float x;
     float y;
+    float local_x;
+    float local_y;
     float r;
     float g;
     float b;
-    float point_size;
 } RenderVertex;
 
 typedef struct VisualizerMetrics {

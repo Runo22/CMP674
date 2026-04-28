@@ -1,6 +1,12 @@
 #include "RaylibInteropTypes.cuh"
 #include "CudaUtils.cuh"
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <GL/gl.h>
+
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
@@ -151,20 +157,41 @@ __global__ static void write_vbo_kernel(
     }
 
     const DeviceBall b = balls[i];
-    vertices[i].x = (b.x / (float)width) * 2.0f - 1.0f;
-    vertices[i].y = 1.0f - (b.y / (float)height) * 2.0f;
+    const float center_x = (b.x / (float)width) * 2.0f - 1.0f;
+    const float center_y = 1.0f - (b.y / (float)height) * 2.0f;
+    const float radius_x = fmaxf(9.0f, b.radius * 2.0f) / (float)width * 2.0f;
+    const float radius_y = fmaxf(9.0f, b.radius * 2.0f) / (float)height * 2.0f;
 
+    float r = 0.18f;
+    float g = 0.78f;
+    float bl = 1.0f;
     if (b.colliding) {
-        vertices[i].r = 1.0f;
-        vertices[i].g = 0.20f;
-        vertices[i].b = 0.10f;
-    } else {
-        vertices[i].r = 0.10f;
-        vertices[i].g = 0.58f;
-        vertices[i].b = 1.0f;
+        r = 1.0f;
+        g = 0.28f;
+        bl = 0.14f;
     }
 
-    vertices[i].point_size = fmaxf(2.0f, b.radius * 2.0f);
+    const float corners[6][2] = {
+        {-1.0f, -1.0f},
+        { 1.0f, -1.0f},
+        { 1.0f,  1.0f},
+        {-1.0f, -1.0f},
+        { 1.0f,  1.0f},
+        {-1.0f,  1.0f}
+    };
+
+    const int base = i * 6;
+    for (int vertex_index = 0; vertex_index < 6; ++vertex_index) {
+        const float local_x = corners[vertex_index][0];
+        const float local_y = corners[vertex_index][1];
+        vertices[base + vertex_index].x = center_x + local_x * radius_x;
+        vertices[base + vertex_index].y = center_y + local_y * radius_y;
+        vertices[base + vertex_index].local_x = local_x;
+        vertices[base + vertex_index].local_y = local_y;
+        vertices[base + vertex_index].r = r;
+        vertices[base + vertex_index].g = g;
+        vertices[base + vertex_index].b = bl;
+    }
 }
 
 extern "C" int cuda_visualizer_create(unsigned int vbo, int object_count, int width, int height) {
